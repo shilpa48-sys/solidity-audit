@@ -152,38 +152,35 @@ contract CalldataRestriction {
 }
 
 //patched code
-contract ReadCalldataValuesPatched {
+contract CalldataRestrictionPatched {
 
-    uint256 public constant MAX_ARRAY_SIZE = 100;
+    uint256 public constant MAX_LENGTH = 100;
 
-    function findLargest(
-        uint256[] calldata _numbers
+    function modifyMessage(
+        string calldata _message
     )
         external
         pure
-        returns (uint256)
+        returns (string memory)
     {
         require(
-            _numbers.length > 0,
-            "Empty array"
+            bytes(_message).length > 0,
+            "Empty string"
         );
 
         require(
-            _numbers.length <= MAX_ARRAY_SIZE,
-            "Array too large"
+            bytes(_message).length <= MAX_LENGTH,
+            "String too large"
         );
 
-        uint256 largest = _numbers[0];
+        string memory tempMessage = _message;
 
-        for (uint256 i = 1; i < _numbers.length; i++) {
-
-            if (_numbers[i] > largest) {
-
-                largest = _numbers[i];
-            }
-        }
-
-        return largest;
+        return string(
+            abi.encodePacked(
+                tempMessage,
+                " Modified"
+            )
+        );
     }
 }
 
@@ -191,7 +188,7 @@ contract ReadCalldataValuesPatched {
 Audit Report
 Title
 
-Unbounded Calldata Array Processing
+Unbounded Calldata String Copy
 
 Severity
 
@@ -199,83 +196,79 @@ Low
 
 Reason
 
-The function processes a user-supplied calldata array using a loop without enforcing a maximum size.
+The contract copies attacker-controlled calldata strings into memory without enforcing any size limitation.
 
 Location
 
-Contract: ReadCalldataValuesVul
+Contract: CalldataRestrictionVul
 
-Function: findLargest()
+Function: modifyMessage()
 
 Vulnerability Description
 
-The contract iterates through an attacker-controlled calldata array to determine the largest value.
+The function accepts a calldata string and copies it into memory for processing.
 
-Because no maximum array length is enforced, 
-an attacker can supply excessively large arrays that significantly increase gas consumption.
+Because the string length is not validated, an attacker can provide extremely large inputs that force excessive memory allocation and increase gas consumption.
 
 Impact
-Increased transaction costs
-Gas exhaustion risk
+Increased execution costs
+Gas exhaustion
 Potential denial-of-service conditions
-Reduced contract scalability
+Poor scalability under large inputs
 Proof of Concept
 Deploy contract
-Call findLargest([1,2,3])
+Call modifyMessage("Hello")
 Observe normal execution
-Call findLargest() with a very large array
-Observe substantial gas increase
-Extremely large arrays may cause transaction failure
+Call modifyMessage() with a very large string
+Observe significantly higher gas consumption
+Extremely large inputs may cause transaction failure
 Root Cause
-Missing array length validation
-Loop execution depends entirely on attacker-controlled input
-No upper bound on calldata processing
+Missing input length validation
+Attacker-controlled calldata copied into memory
+No limits on dynamic data size
 Recommendation
 
-Validate calldata array size before processing.
+Validate string length before copying calldata into memory.
 
 Example:
 
 require(
-    _numbers.length <= 100,
-    "Array too large"
+    bytes(_message).length <= 100,
+    "String too large"
 );
 
-Also reject empty arrays:
+Also reject empty strings if business logic requires valid input:
 
 require(
-    _numbers.length > 0,
-    "Empty array"
+    bytes(_message).length > 0,
+    "Empty string"
 );
 Patched Code
-function findLargest(
-    uint256[] calldata _numbers
+function modifyMessage(
+    string calldata _message
 )
     external
     pure
-    returns (uint256)
+    returns (string memory)
 {
     require(
-        _numbers.length > 0,
-        "Empty array"
+        bytes(_message).length > 0,
+        "Empty string"
     );
 
     require(
-        _numbers.length <= 100,
-        "Array too large"
+        bytes(_message).length <= 100,
+        "String too large"
     );
 
-    uint256 largest = _numbers[0];
+    string memory tempMessage = _message;
 
-    for (uint256 i = 1; i < _numbers.length; i++) {
-
-        if (_numbers[i] > largest) {
-
-            largest = _numbers[i];
-        }
-    }
-
-    return largest;
+    return string(
+        abi.encodePacked(
+            tempMessage,
+            " Modified"
+        )
+    );
 }
 */
 
